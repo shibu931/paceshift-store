@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import {InstagramIcon} from "@/components/icons/index.tsx";
-import {XIcon} from "@/components/icons/index.tsx";
+import { InstagramIcon } from "@/components/icons";
+import { XIcon } from "@/components/icons";
 
 const footerLinks = [
   { label: "Socks", href: "#socks" },

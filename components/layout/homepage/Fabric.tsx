@@ -1,6 +1,6 @@
-import {BambooIcon} from "@/components/icons/index.tsx";
-import {NylonIcon} from "@/components/icons/index.tsx";
-import {SpandexIcon} from "@/components/icons/index.tsx";
+import {BambooIcon} from "@/components/icons/index";
+import {NylonIcon} from "@/components/icons/index";
+import {SpandexIcon} from "@/components/icons/index";
 
 export default function Fabric() {
   return (

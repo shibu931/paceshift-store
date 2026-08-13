@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Button from "@/components/common/Button";
 
-import {ComfortIcon} from "@/components/icons/index.tsx";
-import {MoistureIcon} from "@/components/icons/index.tsx";
-import {CushionIcon} from "@/components/icons/index.tsx";
-import {ArchSupportIcon} from "@/components/icons/index.tsx";
-import {DurabilityIcon} from "@/components/icons/index.tsx";
+import {ComfortIcon} from "@/components/icons/index";
+import {MoistureIcon} from "@/components/icons/index";
+import {CushionIcon} from "@/components/icons/index";
+import {ArchSupportIcon} from "@/components/icons/index";
+import {DurabilityIcon} from "@/components/icons/index";
 
 export default function SocksSection() {
   return (
