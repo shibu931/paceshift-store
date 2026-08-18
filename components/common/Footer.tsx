@@ -5,12 +5,12 @@ import { InstagramIcon } from "@/components/icons";
 import { XIcon } from "@/components/icons";
 
 const footerLinks = [
-  { label: "Socks", href: "#socks" },
-  { label: "Jersey", href: "#jersey" },
-  { label: "Fabric Tech", href: "#fabric" },
-  { label: "Story", href: "#story" },
-  { label: "Coming Soon", href: "#coming-soon" },
-  { label: "Waitlist", href: "#waitlist" },
+  { label: "Socks", href: "/products/paceshift-performance-crew-socks" },
+  // { label: "Jersey", href: "#jersey" },
+  { label: "Fabric Tech", href: "/fabric-tech" },
+  { label: "Story", href: "/our-story" },
+  // { label: "Coming Soon", href: "#coming-soon" },
+  // { label: "Waitlist", href: "#waitlist" },
 ];
 
 export default function Footer() {

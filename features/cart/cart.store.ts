@@ -67,6 +67,32 @@ export const useCartStore = create<CartState>()(
         });
       },
 
+      buyNow: (
+        productId,
+        variantSku,
+        quantity = 1
+      ) => {
+        const safeQuantity = Math.max(
+          1,
+          Math.min(
+            quantity,
+            MAX_CART_QUANTITY
+          )
+        );
+
+        set({
+          items: [
+            {
+              productId,
+              variantSku,
+              quantity: safeQuantity,
+            },
+          ],
+
+          isCartOpen: false,
+        });
+      },
+
       updateQuantity: (
         productId,
         variantSku,
@@ -140,7 +166,7 @@ export const useCartStore = create<CartState>()(
           0
         );
       },
-      
+
       removeInvalidItems: (invalidItems) => {
         if (!invalidItems.length) {
           return;

@@ -56,11 +56,11 @@ export function ProductPurchase({
           variantSku={selectedVariant.sku}
           quantity={quantity}
         />
-          <AddToCartButton
+          {/* <AddToCartButton
           productId={product.id}
           variantSku={selectedVariant.sku}
           quantity={quantity}
-        />        
+        />         */}
       </div>
     </div>
   );

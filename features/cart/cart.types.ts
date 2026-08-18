@@ -48,6 +48,12 @@ export interface CartState {
     quantity?: number
   ) => void;
 
+  buyNow: (
+  productId: string,
+  variantSku: string,
+  quantity?: number
+) => void;
+
   updateQuantity: (
     productId: string,
     variantSku: string,

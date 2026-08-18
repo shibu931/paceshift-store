@@ -2,14 +2,16 @@
 
 import { hydrateCartAction } from "@/features/cart/cart.action";
 import { useCartStore } from "@/features/cart/cart.store";
-import { CartItem, HydratedCart } from "@/features/cart/cart.types";
+import {
+  CartItem,
+  HydratedCart,
+} from "@/features/cart/cart.types";
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
-
 
 const EMPTY_CART: HydratedCart = {
   items: [],
@@ -20,7 +22,17 @@ const EMPTY_CART: HydratedCart = {
   },
 };
 
-export function useCart() {
+interface UseCartOptions {
+  hydrateOnMount?: boolean;
+}
+
+export function useCart(
+  options: UseCartOptions = {}
+) {
+  const {
+    hydrateOnMount = false,
+  } = options;
+
   const items = useCartStore(
     (state) => state.items
   );
@@ -40,17 +52,9 @@ export function useCart() {
   const [error, setError] =
     useState<string | null>(null);
 
-  /*
-   * Prevent hydration from happening
-   * multiple times simultaneously.
-   */
   const isHydrating =
     useRef(false);
 
-  /*
-   * Keep the server-hydrated product
-   * information here.
-   */
   const hydrateCart = useCallback(
     async (cartItems: CartItem[]) => {
       if (!cartItems.length) {
@@ -58,10 +62,6 @@ export function useCart() {
         return;
       }
 
-      /*
-       * Don't start another hydration
-       * while one is already running.
-       */
       if (isHydrating.current) {
         return;
       }
@@ -77,10 +77,6 @@ export function useCart() {
             items: cartItems,
           });
 
-        /*
-         * Remove products/variants that
-         * no longer exist.
-         */
         if (
           result.invalidItems.length
         ) {
@@ -89,6 +85,13 @@ export function useCart() {
             .removeInvalidItems(
               result.invalidItems
             );
+
+          /*
+           * Don't leave stale hydrated
+           * data after invalid items
+           * have been removed.
+           */
+          setCart(EMPTY_CART);
 
           return;
         }
@@ -112,27 +115,34 @@ export function useCart() {
   );
 
   /*
-   * ONLY hydrate when the drawer opens.
+   * ----------------------------------
+   * Cart drawer hydration
+   * ----------------------------------
    *
-   * Quantity changes do NOT trigger
-   * this effect.
+   * Existing behavior remains intact.
    */
   useEffect(() => {
-    if (!isCartOpen) {
+    if (
+      !hydrateOnMount &&
+      !isCartOpen
+    ) {
       return;
     }
 
     hydrateCart(items);
   }, [
     isCartOpen,
+    hydrateOnMount,
     hydrateCart,
   ]);
 
   /*
-   * Update quantities locally.
+   * ----------------------------------
+   * Local quantity synchronization
+   * ----------------------------------
    *
-   * This NEVER sets isLoading.
-   * This NEVER calls the server.
+   * Quantity changes do NOT cause
+   * another server hydration.
    */
   useEffect(() => {
     setCart((currentCart) => {

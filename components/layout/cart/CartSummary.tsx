@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { FastrrCheckoutButton } from "./FastrrCheckoutButton";
 import { useCart } from "@/hooks/useCart";
 
 interface CartSummaryProps {
@@ -59,8 +58,7 @@ export function CartSummary({
           proceeding to checkout.
         </p>
       )}
-      <FastrrCheckoutButton items={items}/>
-      {/* <Link
+      <Link
         href={
           hasUnavailableItems
             ? "#"
@@ -95,7 +93,7 @@ export function CartSummary({
         "
       >
         Checkout
-      </Link> */}
+      </Link>
     </div>
   );
 }
