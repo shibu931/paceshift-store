@@ -59,9 +59,7 @@ export function CartSummary({
           proceeding to checkout.
         </p>
       )}
-      <FastrrCheckoutButton
-        
-      />
+      <FastrrCheckoutButton items={items}/>
       {/* <Link
         href={
           hasUnavailableItems
