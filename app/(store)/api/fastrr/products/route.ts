@@ -44,7 +44,7 @@ export async function GET(
           const variants =
             product.variants.map(
               (variant:any) => ({
-                id: variant.variantId,
+                variant_id: variant.variantId,
 
                 title:
                   variant.attributes
@@ -88,17 +88,14 @@ export async function GET(
 
                 grams:
                   variant.weight
-                    ? Math.round(
-                        variant.weight *
-                          1000
-                      )
+                    ? variant.weight
                     : 0,
 
                 weight:
                   variant.weight,
 
                 weight_unit:
-                  "kg",
+                  "g",
 
                 image:
                   variant.images?.[0]
@@ -125,7 +122,7 @@ export async function GET(
             );
 
           return {
-            id: product.productId,
+            product_id: product.productId,
 
             title:
               product.name,

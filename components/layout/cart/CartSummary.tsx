@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { FastrrCheckoutButton } from "./FastrrCheckoutButton";
+import { useCart } from "@/hooks/useCart";
 
 interface CartSummaryProps {
   subtotal: number;
@@ -11,6 +13,8 @@ export function CartSummary({
   subtotal,
   hasUnavailableItems,
 }: CartSummaryProps) {
+  const {cart} = useCart()
+  const items = [{variantId:200000001,quantity:cart.items[0].quantity}]
   return (
     <div>
       <div className="space-y-3 text-sm">
@@ -55,7 +59,10 @@ export function CartSummary({
           proceeding to checkout.
         </p>
       )}
-      <Link
+      <FastrrCheckoutButton
+        
+      />
+      {/* <Link
         href={
           hasUnavailableItems
             ? "#"
@@ -90,7 +97,9 @@ export function CartSummary({
         "
       >
         Checkout
-      </Link>
+      </Link> */}
     </div>
   );
 }
+
+

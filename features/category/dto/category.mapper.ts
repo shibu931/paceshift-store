@@ -45,7 +45,7 @@ export function toFastrrCollection(
   category: any
 ) {
   return {
-    id: category.fastrrId,
+    collection_id: category.fastrrId,
 
     title: category.name,
     handle: category.slug,
