@@ -1,4 +1,5 @@
-import pkg from 'mongoose';
+import pkg from "mongoose";
+
 const { Schema, model, models } = pkg;
 
 const CategorySchema = new Schema(
@@ -9,7 +10,6 @@ const CategorySchema = new Schema(
       required: true,
       trim: true,
     },
-
     // URL Slug
     slug: {
       type: String,
@@ -32,7 +32,7 @@ const CategorySchema = new Schema(
       default: "",
     },
 
-    // Parent Category (Optional)
+    // Parent Category
     parent: {
       type: Schema.Types.ObjectId,
       ref: "Category",
@@ -82,6 +82,16 @@ const CategorySchema = new Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
+
+    // Fastrr / Shiprocket Collection ID
+    //
+    // Keep this separate from MongoDB _id.
+    // This is the ID exposed to Fastrr.
+    fastrrId: {
+      type: Number,
+      unique: true,
+      sparse: true,
+    },
   },
   {
     timestamps: true,
@@ -95,6 +105,7 @@ CategorySchema.index({ featured: 1 });
 CategorySchema.index({ showInMenu: 1 });
 
 const Category =
-  models.Category || model("Category", CategorySchema);
+  models.Category ||
+  model("Category", CategorySchema);
 
 export default Category;

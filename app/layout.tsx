@@ -5,6 +5,7 @@ import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import { Rajdhani, Work_Sans } from "next/font/google";
 import "./globals.css";
+import { CartDrawer } from "@/components/layout/cart/CartDrawer";
 
 const rajdhani = Rajdhani({
   subsets: ["latin"],
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         {children}
         <Footer />
+        <CartDrawer />
       </body>
     </html>
   );

@@ -6,9 +6,10 @@ import {
   toProductCardDTO,
   toProductDetailDTO,
 } from "../dto/product.mapper";
+import Category from "@/lib/DB/models/Category";
 
 class ProductService {
-  
+
   //Get all active products
   async getProducts() {
     await connectToDB();
@@ -80,7 +81,7 @@ class ProductService {
     return product ? toProductDetailDTO(product) : null;
   }
 
-//   Related Products
+  //   Related Products
   async getRelatedProducts(productId: string, categoriesId: string) {
     await connectToDB();
 
@@ -91,11 +92,11 @@ class ProductService {
     })
       .limit(4)
       .lean();
-    
+
     return products.map(toProductCardDTO);
   }
 
-//   Search Products
+  //   Search Products
   async searchProducts(query: string) {
     await connectToDB();
 
@@ -118,7 +119,7 @@ class ProductService {
     return products.map(toProductCardDTO);
   }
 
-//   categories Products
+  //   categories Products
   async getProductsBycategories(categoriesId: string) {
     await connectToDB();
 
@@ -128,7 +129,70 @@ class ProductService {
     }).lean();
     return products.map(toProductCardDTO);
   }
+
+  // catalog products
+async getCatalogProducts(
+  page = 1,
+  limit = 100,
+  collectionId?: string
+) {
+  await connectToDB();
+
+  const filter: any = {
+    status: "active",
+  };
+
+  // Fastrr collection_id → MongoDB Category._id
+  if (collectionId) {
+    const category =
+      await Category.findOne({
+        fastrrId: Number(collectionId),
+        status: "active",
+      })
+        .select("_id")
+        .lean();
+
+    // Collection doesn't exist
+    if (!category) {
+      return {
+        total: 0,
+        products: [],
+      };
+    }
+
+    // Product.categories contains MongoDB ObjectIds
+    filter.categories =
+      category._id;
+  }
+
+  const skip =
+    (page - 1) * limit;
+
+  const [
+    products,
+    total,
+  ] = await Promise.all([
+    Product.find(filter)
+      .populate("brand")
+      .populate("categories")
+      .sort({
+        createdAt: -1,
+      })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+
+    Product.countDocuments(filter),
+  ]);
+
+  return {
+    products,
+    total,
+  };
 }
+}
+
+
 
 const productService = new ProductService();
 

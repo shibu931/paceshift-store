@@ -2,19 +2,19 @@
 
 interface BuyNowButtonProps {
   productId: string;
-  variantId: string;
+  variantSku: string;
   quantity: number;
 }
 
 export function BuyNowButton({
   productId,
-  variantId,
+  variantSku,
   quantity,
 }: BuyNowButtonProps) {
   const handleBuyNow = () => {
     console.log({
       productId,
-      variantId,
+      variantSku,
       quantity,
     });
 

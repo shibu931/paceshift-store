@@ -4,13 +4,13 @@ import { ProductDetailDTO } from "@/features/products/dto/product-detail.dto";
 
 interface ProductVariantSelectorProps {
   variants: ProductDetailDTO["variants"];
-  selectedVariantId: string;
-  onVariantChange: (id: string) => void;
+  selectedVariantSku: string;
+  onVariantChange: (sku: string) => void;
 }
 
 export function ProductVariantSelector({
   variants,
-  selectedVariantId,
+  selectedVariantSku,
   onVariantChange,
 }: ProductVariantSelectorProps) {
   const attributes = Array.from(
@@ -65,8 +65,8 @@ export function ProductVariantSelector({
                 if (!variant) return null;
 
                 const selected =
-                  variant.id ===
-                  selectedVariantId;
+                  variant.sku ===
+                  selectedVariantSku;
 
                 return (
                   <button
@@ -74,7 +74,7 @@ export function ProductVariantSelector({
                     type="button"
                     onClick={() =>
                       onVariantChange(
-                        variant.id
+                        variant.sku
                       )
                     }
                     className={`

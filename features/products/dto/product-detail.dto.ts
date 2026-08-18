@@ -8,7 +8,7 @@ export interface ProductDetailDTO {
   slug: string;
   shortDescription: string;
   description: string;
-
+  productId: number;
   media: {
     url: string;
     alt: string;
@@ -17,7 +17,7 @@ export interface ProductDetailDTO {
   }[];
 
   variants: {
-    id: string;
+    variantId: number;
     sku: string;
     price: number;
     comparePrice: number | null;

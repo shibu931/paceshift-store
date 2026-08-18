@@ -7,6 +7,7 @@ import Button from "@/components/common/Button";
 import { NAV_ITEMS } from "@/lib/constants";
 import { useNavbar } from "@/hooks/useNavbar";
 import Link from "next/link";
+import { CartTrigger } from "../layout/cart/CartTrigger";
 
 export default function Header() {
   const isScrolled = useNavbar();
@@ -111,12 +112,7 @@ export default function Header() {
         <div className="flex items-center gap-6">
 
           <div className="hidden lg:block">
-            <Button
-              href="#waitlist"
-              variant="outline"
-            >
-              Join Waitlist
-            </Button>
+            <CartTrigger/>
           </div>
 
           {/* Hamburger */}

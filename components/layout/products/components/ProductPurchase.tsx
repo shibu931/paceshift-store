@@ -19,17 +19,17 @@ export function ProductPurchase({
 }: ProductPurchaseProps) {
   const defaultVariant = product.variants[0];
 
-  const [selectedVariantId, setSelectedVariantId] =
-    useState(defaultVariant?.id ?? "");
+  const [selectedVariantSku, setSelectedVariantSku] =
+    useState(defaultVariant?.sku ?? "");
 
   const [quantity, setQuantity] = useState(1);
 
   const selectedVariant =
     product.variants.find(
       (variant) =>
-        variant.id === selectedVariantId
+        variant.sku === selectedVariantSku
     ) ?? defaultVariant;
-
+    console.log(selectedVariant)
   if (!selectedVariant) {
     return null;
   }
@@ -38,8 +38,8 @@ export function ProductPurchase({
     <div>
       <ProductVariantSelector
         variants={product.variants}
-        selectedVariantId={selectedVariant.id}
-        onVariantChange={setSelectedVariantId}
+        selectedVariantSku={selectedVariantSku}
+        onVariantChange={setSelectedVariantSku}
       />
 
       <div className="mt-6">
@@ -53,12 +53,12 @@ export function ProductPurchase({
       <div className="mt-6 flex gap-3">
         <BuyNowButton
           productId={product.id}
-          variantId={selectedVariant.id}
+          variantSku={selectedVariant.sku}
           quantity={quantity}
         />
           <AddToCartButton
           productId={product.id}
-          variantId={selectedVariant.id}
+          variantSku={selectedVariant.sku}
           quantity={quantity}
         />        
       </div>

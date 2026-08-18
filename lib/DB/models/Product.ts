@@ -44,6 +44,11 @@ const VariantAttributeSchema = new Schema(
 
 const VariantSchema = new Schema(
   {
+    variantId: {
+      type: Number,
+      required: true,
+    },
+
     sku: {
       type: String,
       required: true,
@@ -147,6 +152,11 @@ const ProductSchema = new Schema(
       lowercase: true,
       trim: true,
     },
+    
+    productId: {
+      type: Number,
+      required: true,
+    },
 
     shortDescription: {
       type: String,
@@ -219,7 +229,7 @@ const ProductSchema = new Schema(
 );
 
 ProductSchema.index({ status: 1 });
-ProductSchema.index({ category: 1 });
+ProductSchema.index({ categories: 1 });
 
 const Product = models.Product || model("Product", ProductSchema);
 

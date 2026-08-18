@@ -26,7 +26,7 @@ export function toProductDetailDTO(
 ): ProductDetailDTO {
   return {
     id: product._id.toString(),
-
+    productId: product.productId,
     name: product.name,
 
     slug: product.slug,
@@ -41,6 +41,8 @@ export function toProductDetailDTO(
 
     variants: (product.variants ?? []).map(
       (variant: any) => ({
+
+        variantId: variant.variantId,
 
         sku: variant.sku,
 
