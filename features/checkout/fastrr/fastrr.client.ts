@@ -6,7 +6,7 @@ const FASTRR_API_URL =
   process.env.FASTRR_API_URL ?? "https://checkout-api.shiprocket.com";
 
 const API_KEY = process.env.FASTRR_API_KEY!;
-const SECRET_KEY = process.env.FASTRR_SECRET_KEY!;
+const SECRET_KEY = process.env.FASTRR_SECRET!;
 
 function createHmac(body: string) {
   return crypto

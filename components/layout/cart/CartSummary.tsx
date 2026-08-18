@@ -14,7 +14,7 @@ export function CartSummary({
   hasUnavailableItems,
 }: CartSummaryProps) {
   const {cart} = useCart()
-  const items = [{variantId:200000001,quantity:cart.items[0].quantity}]
+  const items = [{variantId:200000001,quantity:1}]
   return (
     <div>
       <div className="space-y-3 text-sm">
