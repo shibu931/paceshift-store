@@ -148,11 +148,11 @@ export default function SocksSection() {
             </span>
 
             <span className="font-display text-4xl font-bold">
-              ₹699
+              ₹450
             </span>
 
             <span className="bg-[#ec0116] px-3 py-1 font-display text-xs font-bold uppercase tracking-[0.06em] text-white">
-              22% OFF
+              50% OFF
             </span>
           </div>
 

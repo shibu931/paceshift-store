@@ -8,10 +8,10 @@ const STATS = [
     value: "70%",
     label: "Bamboo Viscose",
   },
-  {
-    value: "Graphene",
-    label: "Infused Jersey",
-  },
+  // {
+  //   value: "Graphene",
+  //   label: "Infused Jersey",
+  // },
   {
     value: "India",
     label: "Built For The Heat",

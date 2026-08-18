@@ -6,7 +6,7 @@ export default function Hero() {
   return (
     <section
       id="top"
-      className="relative flex min-h-screen items-end overflow-hidden"
+      className="relative flex min-h-screen items-center lg:items-end overflow-hidden"
     >
       {/* Background */}
 
@@ -41,8 +41,7 @@ export default function Hero() {
         <p className="mb-[34px] max-w-[540px] text-[17px] text-[#d6d6d4]">
           A performance gear house for athletes who don't
           compromise. Meet the launch collection —
-          bamboo-viscose socks and a graphene-infused race
-          jersey, engineered for India's toughest training
+          bamboo-viscose socks, engineered for India's toughest training
           conditions.
         </p>
 

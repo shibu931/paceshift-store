@@ -2,7 +2,6 @@
 
 import Script from "next/script";
 import { useState } from "react";
-import Razorpay from "razorpay";
 import { createCheckoutAction } from "@/features/checkout/checkout.action";
 import { verifyPaymentAction } from "@/features/checkout/payment.action";
 

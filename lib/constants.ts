@@ -11,8 +11,4 @@ export const NAV_ITEMS = [
     title: "Story",
     href: "/our-story",
   },
-  {
-    title: "Coming Soon",
-    href: "/coming-soon-products",
-  },
 ];

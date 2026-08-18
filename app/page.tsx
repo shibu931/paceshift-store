@@ -15,7 +15,7 @@ export default function Home() {
       <SocksSection/>
       <Fabric/>
       <Editorial/>
-      <Waitlist/>
+      {/* <Waitlist/> */}
     </main>
   );
 }

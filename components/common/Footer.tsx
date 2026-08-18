@@ -55,7 +55,7 @@ export default function Footer() {
           <div className="flex items-center gap-4">
 
             <Link
-              href="#"
+              href="https://wwww.instagram.com/paceshift_"
               aria-label="Instagram"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 transition-all duration-300 hover:border-[#ec0116] hover:text-[#ec0116]"
             >

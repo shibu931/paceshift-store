@@ -122,7 +122,7 @@ export default function Header() {
             onClick={() =>
               setIsMenuOpen(!isMenuOpen)
             }
-            className="relative flex h-7 w-7 flex-col justify-center gap-[5px] lg:hidden"
+            className="relative z-[600] flex h-7 w-7 flex-col justify-center gap-[5px] lg:hidden"
           >
             <span
               className={`h-[2px] bg-white transition ${
@@ -161,7 +161,7 @@ export default function Header() {
         }`}
       >
         {NAV_ITEMS.map((item) => (
-          <a
+          <Link
             key={item.href}
             href={item.href}
             onClick={() =>
@@ -170,15 +170,15 @@ export default function Header() {
             className="font-(--font-display) text-[26px] uppercase tracking-[0.05em]"
           >
             {item.title}
-          </a>
+          </Link>
         ))}
 
-        <Button
+        {/* <Button
           href="#waitlist"
           className="mt-3"
         >
           Join Waitlist
-        </Button>
+        </Button> */}
       </div>
     </header>
   );

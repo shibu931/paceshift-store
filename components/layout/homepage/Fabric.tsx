@@ -25,24 +25,24 @@ export default function Fabric() {
 
         {/* Composition Bar */}
 
-        <div className="mb-16">
+<div className="mb-16">
           <div
             id="compBar"
             className="flex h-3.5 overflow-hidden rounded-full bg-[#1a1a1e]"
           >
             <div
               id="segBamboo"
-              className="h-full w-0 bg-[#ec0116] transition-all duration-[1400ms]"
+              className="h-full w-[70%] bg-[#ec0116] transition-all duration-[1400ms]"
             />
 
             <div
               id="segNylon"
-              className="h-full w-0 bg-[#7e7e7e] transition-all duration-[1400ms]"
+              className="h-full w-[20%] bg-[#7e7e7e] transition-all duration-[1400ms]"
             />
 
             <div
               id="segSpandex"
-              className="h-full w-0 bg-[#525254] transition-all duration-[1400ms]"
+              className="h-full w-[10%] bg-[#525254] transition-all duration-[1400ms]"
             />
           </div>
 
