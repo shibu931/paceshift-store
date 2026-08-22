@@ -56,7 +56,7 @@ export default function Header() {
     };
   }, []);
 
-  return (
+  return ( 
     <header
       className={`fixed inset-x-0 top-0 z-[50] border-b transition-all duration-300 ${
         isScrolled
