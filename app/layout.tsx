@@ -10,22 +10,27 @@ import Script from "next/script";
 
 const rajdhani = Rajdhani({
   subsets: ["latin"],
-variable: '--font-rajdhani',
+  variable: "--font-rajdhani",
   weight: ["500", "600", "700"],
 });
 
 const workSans = Work_Sans({
   subsets: ["latin"],
-variable: '--font-work-sans',
+  variable: "--font-work-sans",
   weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata = {
-  title: 'PaceShift — Performance Gear',
-  description: "PaceShift is a performance gear house for athletes who don't compromise.",
+  title: "PaceShift — Performance Gear",
+  description:
+    "PaceShift is a performance gear house for athletes who don't compromise.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className={`${rajdhani.variable} ${workSans.variable}`}>
       <head>
@@ -39,8 +44,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','GTM-M7Q3CTDK');`,
           }}
-          />
-<Script
+        />
+        <Script
           id="fb-pixel"
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
@@ -58,13 +63,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             `,
           }}
         />
+        <meta name="google-site-verification" content="YtV7wLpRojjvW3nB-uVYs7ijPF-l3JR1xuG8IQrNFFg" />
       </head>
       <body>
         <noscript>
           <img
             height="1"
             width="1"
-            style={{ display: 'none' }}
+            style={{ display: "none" }}
             src="https://www.facebook.com/tr?id=1495185245700132&ev=PageView&noscript=1"
             alt=""
           />
@@ -85,4 +91,3 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </html>
   );
 }
-
