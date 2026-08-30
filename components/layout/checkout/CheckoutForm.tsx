@@ -1,418 +1,481 @@
 "use client";
 
-import {
-  FormEvent,
-  useState,
-} from "react";
+import { useState } from "react";
+import { User, MapPin, CreditCard, ChevronRight, Check, Loader2 } from "lucide-react";
 
-import {
-  Mail,
-  MapPin,
-  Phone,
-  User,
-} from "lucide-react";
-
-import RazorpayCheckout from "./RazorpayCheckout";
-
-interface CartItem {
+interface CheckoutItemPayload {
   variantSku: string;
   quantity: number;
 }
 
 interface CheckoutFormProps {
-  items: CartItem[];
+  items: CheckoutItemPayload[];
+  isLoggedIn?: boolean;
+  userDefaultData?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
 }
 
-const inputClass =
-  "h-12 w-full border border-white/10 bg-[#0d0d0e] px-4 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-white/30";
-
-const labelClass =
-  "mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-white/50";
-
-function FieldIcon({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/25">
-      {children}
-    </span>
-  );
-}
+type Step = 1 | 2 | 3;
+type PaymentMethod = "PREPAID" | "COD";
 
 export default function CheckoutForm({
   items,
+  isLoggedIn = false,
+  userDefaultData,
 }: CheckoutFormProps) {
-  const [form, setForm] =
-    useState({
-      name: "",
-      email: "",
-      phone: "",
-      addressLine1: "",
-      addressLine2: "",
-      city: "",
-      state: "",
-      postalCode: "",
-    });
+  const [currentStep, setCurrentStep] = useState<Step>(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [showPayment, setShowPayment] =
-    useState(false);
+  // Form State
+  const [formData, setFormData] = useState({
+    name: userDefaultData?.name || "",
+    email: userDefaultData?.email || "",
+    phone: userDefaultData?.phone || "",
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    paymentMethod: "PREPAID" as PaymentMethod,
+  });
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  function updateField(
-    field: keyof typeof form,
-    value: string
-  ) {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    if (errors[e.target.name]) {
+      setErrors((prev) => ({ ...prev, [e.target.name]: "" }));
+    }
+  };
 
-  function handleSubmit(
-    event: FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
-
-    setError(null);
-
-    if (!items.length) {
-      setError(
-        "Your cart is empty."
-      );
-
-      return;
+  // Step Validations
+  const validateStep1 = () => {
+    const errs: Record<string, string> = {};
+    if (!formData.name.trim()) errs.name = "Full name is required";
+    if (!formData.email.trim()) {
+      errs.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errs.email = "Enter a valid email";
+    }
+    if (!formData.phone.trim()) {
+      errs.phone = "Phone number is required";
+    } else if (!/^\d{10}$/.test(formData.phone.replace(/\D/g, ""))) {
+      errs.phone = "Enter a valid 10-digit phone number";
     }
 
-    setShowPayment(true);
-  }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
-  const checkoutData = {
-    customer: {
-      name: form.name,
-      email: form.email,
-      phone: form.phone,
-    },
+  const validateStep2 = () => {
+    const errs: Record<string, string> = {};
+    if (!formData.addressLine1.trim()) errs.addressLine1 = "Street address is required";
+    if (!formData.city.trim()) errs.city = "City is required";
+    if (!formData.state.trim()) errs.state = "State is required";
+    if (!formData.postalCode.trim()) {
+      errs.postalCode = "PIN code is required";
+    } else if (!/^\d{6}$/.test(formData.postalCode.trim())) {
+      errs.postalCode = "Enter a valid 6-digit PIN code";
+    }
 
-    shippingAddress: {
-      addressLine1:
-        form.addressLine1,
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
-      addressLine2:
-        form.addressLine2,
+  const handleNext = () => {
+    if (currentStep === 1 && validateStep1()) {
+      setCurrentStep(2);
+    } else if (currentStep === 2 && validateStep2()) {
+      setCurrentStep(3);
+    }
+  };
 
-      city: form.city,
+  const handleBack = (step: Step) => {
+    if (step < currentStep) {
+      setCurrentStep(step);
+    }
+  };
 
-      state: form.state,
+  const handleFinalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
 
-      postalCode:
-        form.postalCode,
+    try {
+      const payload = {
+        customer: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+        },
+        shippingAddress: {
+          line1: formData.addressLine1,
+          line2: formData.addressLine2,
+          city: formData.city,
+          state: formData.state,
+          postalCode: formData.postalCode,
+        },
+        paymentMethod: formData.paymentMethod,
+        items,
+      };
 
-      country: "India",
-    },
-
-    items,
+      console.log("Submitting Checkout Payload:", payload);
+      // Trigger order creation / Razorpay SDK flow here
+    } catch (err) {
+      console.error("Order processing failed", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-12"
-    >
-      {/* -------------------------------- */}
-      {/* Contact */}
-      {/* -------------------------------- */}
-
-      <section>
-        <SectionHeading
-          number="01"
-          title="Contact Information"
-          description="We'll use these details to keep you updated about your order."
-        />
-
-        <div className="mt-7 space-y-5">
-          <div>
-            <label className={labelClass}>
-              Full Name
-            </label>
-
-            <div className="relative">
-              <FieldIcon>
-                <User size={16} />
-              </FieldIcon>
-
-              <input
-                value={form.name}
-                onChange={(e) =>
-                  updateField(
-                    "name",
-                    e.target.value
-                  )
-                }
-                placeholder="Your full name"
-                className={`${inputClass} pl-11`}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={labelClass}>
-              Email Address
-            </label>
-
-            <div className="relative">
-              <FieldIcon>
-                <Mail size={16} />
-              </FieldIcon>
-
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) =>
-                  updateField(
-                    "email",
-                    e.target.value
-                  )
-                }
-                placeholder="you@example.com"
-                className={`${inputClass} pl-11`}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={labelClass}>
-              Phone Number
-            </label>
-
-            <div className="flex">
-              <div className="flex h-12 items-center border border-r-0 border-white/10 bg-[#151516] px-4 text-xs font-medium text-white/50">
-                +91
-              </div>
-
-              <div className="relative flex-1">
-                <FieldIcon>
-                  <Phone size={16} />
-                </FieldIcon>
-
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  value={form.phone}
-                  onChange={(e) =>
-                    updateField(
-                      "phone",
-                      e.target.value.replace(
-                        /\D/g,
-                        ""
-                      )
-                    )
-                  }
-                  placeholder="9876543210"
-                  className={`${inputClass} pl-11`}
-                  required
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* -------------------------------- */}
-      {/* Delivery */}
-      {/* -------------------------------- */}
-
-      <section>
-        <SectionHeading
-          number="02"
-          title="Delivery Address"
-          description="Where should we deliver your order?"
-        />
-
-        <div className="mt-7 space-y-5">
-          <div>
-            <label className={labelClass}>
-              Address
-            </label>
-
-            <div className="relative">
-              <FieldIcon>
-                <MapPin size={16} />
-              </FieldIcon>
-
-              <input
-                value={
-                  form.addressLine1
-                }
-                onChange={(e) =>
-                  updateField(
-                    "addressLine1",
-                    e.target.value
-                  )
-                }
-                placeholder="House number, street, area"
-                className={`${inputClass} pl-11`}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={labelClass}>
-              Apartment, Suite, etc.
-              <span className="ml-2 font-normal text-white/20">
-                OPTIONAL
-              </span>
-            </label>
-
-            <input
-              value={
-                form.addressLine2
-              }
-              onChange={(e) =>
-                updateField(
-                  "addressLine2",
-                  e.target.value
-                )
-              }
-              placeholder="Apartment, floor, landmark"
-              className={inputClass}
-            />
-          </div>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>
-                City
-              </label>
-
-              <input
-                value={form.city}
-                onChange={(e) =>
-                  updateField(
-                    "city",
-                    e.target.value
-                  )
-                }
-                placeholder="City"
-                className={inputClass}
-                required
-              />
-            </div>
-
-            <div>
-              <label className={labelClass}>
-                State
-              </label>
-
-              <input
-                value={form.state}
-                onChange={(e) =>
-                  updateField(
-                    "state",
-                    e.target.value
-                  )
-                }
-                placeholder="State"
-                className={inputClass}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={labelClass}>
-              PIN Code
-            </label>
-
-            <input
-              value={form.postalCode}
-              onChange={(e) =>
-                updateField(
-                  "postalCode",
-                  e.target.value.replace(
-                    /\D/g,
-                    ""
-                  )
-                )
-              }
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="800001"
-              className={inputClass}
-              required
-            />
-          </div>
-        </div>
-      </section>
-
-      {error && (
-        <div className="border border-red-500/20 bg-red-500/5 p-4 text-xs text-red-400">
-          {error}
-        </div>
-      )}
-
-      {/* -------------------------------- */}
-      {/* Payment */}
-      {/* -------------------------------- */}
-
-      {!showPayment ? (
-        <button
-          type="submit"
-          className="group relative flex h-14 w-full items-center justify-center overflow-hidden bg-[#f20a18] text-xs font-black uppercase tracking-[0.18em] text-white transition hover:bg-[#ff1725]"
-        >
-          <span className="relative z-10">
-            Continue to Payment
-          </span>
-
-          <span className="absolute right-5 text-lg transition-transform group-hover:translate-x-1">
-            →
-          </span>
-        </button>
-      ) : (
-        <RazorpayCheckout
-          checkoutData={checkoutData}
-        />
-      )}
-
-      <p className="text-center text-[10px] uppercase tracking-[0.14em] text-white/25">
-        Secure checkout · Your payment
-        information is protected
-      </p>
-    </form>
-  );
-}
-
-function SectionHeading({
-  number,
-  title,
-  description,
-}: {
-  number: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="border-b border-white/10 pb-5">
-      <div className="flex items-center gap-4">
-        <span className="font-mono text-[10px] font-bold text-[#f20a18]">
-          {number}
-        </span>
-
-        <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-white">
-          {title}
-        </h2>
+    <div className="space-y-6">
+      {/* Progress Stepper Bar */}
+      <div className="grid grid-cols-3 border border-white/10 bg-[#0d0d0e]">
+        {[
+          { step: 1, label: "Account", icon: <User size={14} /> },
+          { step: 2, label: "Address", icon: <MapPin size={14} /> },
+          { step: 3, label: "Payment", icon: <CreditCard size={14} /> },
+        ].map((item) => {
+          const isDone = currentStep > item.step;
+          const isActive = currentStep === item.step;
+          return (
+            <button
+              key={item.step}
+              type="button"
+              disabled={item.step > currentStep}
+              onClick={() => handleBack(item.step as Step)}
+              className={`flex items-center justify-center gap-2 border-r border-white/10 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition last:border-r-0 ${
+                isActive
+                  ? "bg-white/5 text-[#f20a18]"
+                  : isDone
+                  ? "cursor-pointer text-white hover:bg-white/5"
+                  : "cursor-not-allowed text-white/20"
+              }`}
+            >
+              {isDone ? <Check size={14} className="text-[#f20a18]" /> : item.icon}
+              <span className="hidden sm:inline">{item.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <p className="mt-2 pl-9 text-xs leading-5 text-white/40">
-        {description}
-      </p>
+      <form onSubmit={handleFinalSubmit}>
+        {/* STEP 1: Account / Contact Info */}
+        {currentStep === 1 && (
+          <div className="border border-white/10 bg-[#0d0d0e] p-6">
+            <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+              <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                1. Contact Details
+              </h2>
+              {isLoggedIn && (
+                <span className="border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-white/50">
+                  Logged In
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="John Doe"
+                  className="w-full border border-white/10 bg-[#151516] px-4 py-3 text-xs text-white placeholder-white/20 outline-none transition focus:border-[#f20a18]"
+                />
+                {errors.name && <p className="mt-1 text-[10px] text-red-500">{errors.name}</p>}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="john@example.com"
+                    className="w-full border border-white/10 bg-[#151516] px-4 py-3 text-xs text-white placeholder-white/20 outline-none transition focus:border-[#f20a18]"
+                  />
+                  {errors.email && (
+                    <p className="mt-1 text-[10px] text-red-500">{errors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="9876543210"
+                    className="w-full border border-white/10 bg-[#151516] px-4 py-3 text-xs text-white placeholder-white/20 outline-none transition focus:border-[#f20a18]"
+                  />
+                  {errors.phone && (
+                    <p className="mt-1 text-[10px] text-red-500">{errors.phone}</p>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNext}
+                className="mt-6 flex w-full items-center justify-center gap-2 bg-[#f20a18] py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-white transition hover:bg-[#ff1725]"
+              >
+                Continue to Address
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: Shipping Address */}
+        {currentStep === 2 && (
+          <div className="border border-white/10 bg-[#0d0d0e] p-6">
+            <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+              <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                2. Shipping Address
+              </h2>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="text-[10px] font-semibold uppercase tracking-wider text-white/40 transition hover:text-white"
+              >
+                Edit Contact
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+                  Street Address
+                </label>
+                <input
+                  type="text"
+                  name="addressLine1"
+                  value={formData.addressLine1}
+                  onChange={handleChange}
+                  placeholder="House / Flat No., Building, Street"
+                  className="w-full border border-white/10 bg-[#151516] px-4 py-3 text-xs text-white placeholder-white/20 outline-none transition focus:border-[#f20a18]"
+                />
+                {errors.addressLine1 && (
+                  <p className="mt-1 text-[10px] text-red-500">{errors.addressLine1}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+                  Apartment, Suite, Landmark (Optional)
+                </label>
+                <input
+                  type="text"
+                  name="addressLine2"
+                  value={formData.addressLine2}
+                  onChange={handleChange}
+                  placeholder="Near City Center"
+                  className="w-full border border-white/10 bg-[#151516] px-4 py-3 text-xs text-white placeholder-white/20 outline-none transition focus:border-[#f20a18]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    placeholder="Mumbai"
+                    className="w-full border border-white/10 bg-[#151516] px-4 py-3 text-xs text-white placeholder-white/20 outline-none transition focus:border-[#f20a18]"
+                  />
+                  {errors.city && <p className="mt-1 text-[10px] text-red-500">{errors.city}</p>}
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+                    State
+                  </label>
+                  <input
+                    type="text"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    placeholder="Maharashtra"
+                    className="w-full border border-white/10 bg-[#151516] px-4 py-3 text-xs text-white placeholder-white/20 outline-none transition focus:border-[#f20a18]"
+                  />
+                  {errors.state && (
+                    <p className="mt-1 text-[10px] text-red-500">{errors.state}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+                    PIN Code
+                  </label>
+                  <input
+                    type="text"
+                    name="postalCode"
+                    value={formData.postalCode}
+                    onChange={handleChange}
+                    placeholder="400001"
+                    maxLength={6}
+                    className="w-full border border-white/10 bg-[#151516] px-4 py-3 text-xs text-white placeholder-white/20 outline-none transition focus:border-[#f20a18]"
+                  />
+                  {errors.postalCode && (
+                    <p className="mt-1 text-[10px] text-red-500">{errors.postalCode}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="border border-white/10 px-6 py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-white/60 transition hover:bg-white/5 hover:text-white"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="flex flex-1 items-center justify-center gap-2 bg-[#f20a18] py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-white transition hover:bg-[#ff1725]"
+                >
+                  Proceed to Payment
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Payment Selection & Place Order */}
+        {currentStep === 3 && (
+          <div className="border border-white/10 bg-[#0d0d0e] p-6">
+            <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+              <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-white">
+                3. Payment Method
+              </h2>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(2)}
+                className="text-[10px] font-semibold uppercase tracking-wider text-white/40 transition hover:text-white"
+              >
+                Edit Address
+              </button>
+            </div>
+
+            {/* Delivery Summary Brief */}
+            <div className="mb-6 border border-white/5 bg-[#151516] p-4 text-[11px] text-white/60">
+              <p className="font-bold text-white">{formData.name} • {formData.phone}</p>
+              <p className="mt-1 text-white/40">
+                {formData.addressLine1}, {formData.city}, {formData.state} - {formData.postalCode}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Prepaid Option */}
+              <label
+                className={`flex cursor-pointer items-center justify-between border p-4 transition ${
+                  formData.paymentMethod === "PREPAID"
+                    ? "border-[#f20a18] bg-[#f20a18]/5"
+                    : "border-white/10 bg-[#151516] hover:border-white/20"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="PREPAID"
+                    checked={formData.paymentMethod === "PREPAID"}
+                    onChange={() =>
+                      setFormData((prev) => ({ ...prev, paymentMethod: "PREPAID" }))
+                    }
+                    className="accent-[#f20a18]"
+                  />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-white">
+                      Online Payment (Prepaid)
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-white/40">
+                      UPI, Credit/Debit Cards, NetBanking (Fastest)
+                    </p>
+                  </div>
+                </div>
+                <span className="border border-[#f20a18]/30 bg-[#f20a18]/10 px-2 py-0.5 font-mono text-[9px] font-bold text-[#f20a18]">
+                  RECOMMENDED
+                </span>
+              </label>
+
+              {/* COD Option */}
+              <label
+                className={`flex cursor-pointer items-center justify-between border p-4 transition ${
+                  formData.paymentMethod === "COD"
+                    ? "border-[#f20a18] bg-[#f20a18]/5"
+                    : "border-white/10 bg-[#151516] hover:border-white/20"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="COD"
+                    checked={formData.paymentMethod === "COD"}
+                    onChange={() =>
+                      setFormData((prev) => ({ ...prev, paymentMethod: "COD" }))
+                    }
+                    className="accent-[#f20a18]"
+                  />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-white">
+                      Cash on Delivery (COD)
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-white/40">
+                      Pay with cash upon delivery
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              <div className="mt-6 flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(2)}
+                  className="border border-white/10 px-6 py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-white/60 transition hover:bg-white/5 hover:text-white"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex flex-1 items-center justify-center gap-2 bg-[#f20a18] py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-white transition hover:bg-[#ff1725] disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : formData.paymentMethod === "PREPAID" ? (
+                    "Proceed to Razorpay"
+                  ) : (
+                    "Confirm COD Order"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </form>
     </div>
   );
 }
