@@ -26,6 +26,7 @@ interface RazorpayCheckoutProps {
       variantSku: string;
       quantity: number;
     }[];
+    couponCode: string | undefined;
   };
 }
 
@@ -59,6 +60,7 @@ export default function RazorpayCheckout({
           country:
             checkoutData.shippingAddress.country ?? "IN",
         },
+        couponCode: checkoutData.couponCode ?? "",
       };
 
       const result =
