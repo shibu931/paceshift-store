@@ -212,6 +212,30 @@ const RazorpaySchema = new Schema(
   { _id: false }
 );
 
+const CouponSchema = new Schema({
+  code: {
+    type: String,
+    default: null,
+  },
+
+  category: {
+    type: String,
+    enum: ["regular", "influencer"],
+    default: null,
+  },
+
+  influencerName: {
+    type: String,
+    default: null,
+  },
+
+  discount: {
+    type: Number,
+    default: 0,
+  },
+  },
+  { _id: false });
+
 
 /* ---------------------------------- */
 /* Order */
@@ -253,7 +277,7 @@ const OrderSchema = new Schema(
 
     paymentMethod: {
       type: String,
-      enum: ["razorpay","cod"],
+      enum: ["razorpay", "cod"],
       required: true,
     },
 
@@ -287,6 +311,10 @@ const OrderSchema = new Schema(
 
     razorpay: {
       type: RazorpaySchema,
+      default: () => ({}),
+    },
+    coupon: {
+      type: CouponSchema,
       default: () => ({}),
     },
   },

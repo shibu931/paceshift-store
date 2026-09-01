@@ -131,65 +131,65 @@ class ProductService {
   }
 
   // catalog products
-async getCatalogProducts(
-  page = 1,
-  limit = 100,
-  collectionId?: string
-) {
-  await connectToDB();
+  async getCatalogProducts(
+    page = 1,
+    limit = 100,
+    collectionId?: string
+  ) {
+    await connectToDB();
 
-  const filter: any = {
-    status: "active",
-  };
+    const filter: any = {
+      status: "active",
+    };
 
-  // Fastrr collection_id → MongoDB Category._id
-  if (collectionId) {
-    const category =
-      await Category.findOne({
-        fastrrId: Number(collectionId),
-        status: "active",
-      })
-        .select("_id")
-        .lean();
+    // Fastrr collection_id → MongoDB Category._id
+    if (collectionId) {
+      const category =
+        await Category.findOne({
+          fastrrId: Number(collectionId),
+          status: "active",
+        })
+          .select("_id")
+          .lean();
 
-    // Collection doesn't exist
-    if (!category) {
-      return {
-        total: 0,
-        products: [],
-      };
+      // Collection doesn't exist
+      if (!category) {
+        return {
+          total: 0,
+          products: [],
+        };
+      }
+
+      // Product.categories contains MongoDB ObjectIds
+      filter.categories =
+        category._id;
     }
 
-    // Product.categories contains MongoDB ObjectIds
-    filter.categories =
-      category._id;
+    const skip =
+      (page - 1) * limit;
+
+    const [
+      products,
+      total,
+    ] = await Promise.all([
+      Product.find(filter)
+        .populate("brand")
+        .populate("categories")
+        .sort({
+          createdAt: -1,
+        })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Product.countDocuments(filter),
+    ]);
+
+    return {
+      products,
+      total,
+    };
   }
-
-  const skip =
-    (page - 1) * limit;
-
-  const [
-    products,
-    total,
-  ] = await Promise.all([
-    Product.find(filter)
-      .populate("brand")
-      .populate("categories")
-      .sort({
-        createdAt: -1,
-      })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-
-    Product.countDocuments(filter),
-  ]);
-
-  return {
-    products,
-    total,
-  };
-}
 }
 
 
