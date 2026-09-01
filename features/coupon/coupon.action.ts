@@ -31,11 +31,6 @@ export async function validateCouponAction(
       };
     }
 
-    /*
-     * Calculate subtotal from DB.
-     *
-     * Never trust frontend prices.
-     */
     let subtotal = 0;
 
     for (const item of items) {
@@ -54,8 +49,24 @@ export async function validateCouponAction(
         };
       }
 
+      const variant =
+        product.variants.find(
+          (variant:any) =>
+            variant.sku ===
+            item.variantSku
+        );
+
+      if (!variant) {
+        return {
+          success: false,
+          discount: 0,
+          message:
+            "One or more variants are unavailable",
+        };
+      }
+
       subtotal +=
-        product.price *
+        variant.price *
         item.quantity;
     }
 

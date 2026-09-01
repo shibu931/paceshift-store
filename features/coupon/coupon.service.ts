@@ -161,7 +161,6 @@ class CouponService {
       message: "Coupon applied",
 
       discount,
-
       coupon: {
         id:
           coupon._id.toString(),

@@ -8,11 +8,20 @@ import {
   ChevronRight,
   Check,
   Loader2,
+  Tag,
+  X,
 } from "lucide-react";
 import RazorpayCheckout from "./RazorpayCheckout";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/features/cart/cart.store";
 import { createCodOrderAction } from "@/features/checkout/checkout.action";
+import { validateCouponAction } from "@/features/coupon/coupon.action";
+
+interface AppliedCoupon {
+  code: string;
+  discount: number;
+  subtotal: number;
+}
 
 interface CheckoutItemPayload {
   productId: string;
@@ -30,6 +39,8 @@ interface CheckoutFormProps {
     email?: string;
     phone?: string;
   };
+  appliedCoupon: AppliedCoupon | null;
+  setAppliedCoupon: (coupon: AppliedCoupon | null) => void;
 }
 
 type Step = 1 | 2 | 3;
@@ -40,34 +51,35 @@ export default function CheckoutForm({
   items,
   isLoggedIn = false,
   userDefaultData,
+  appliedCoupon,
+  setAppliedCoupon,
 }: CheckoutFormProps) {
   const router = useRouter();
-
   const clearCart = useCartStore((state) => state.clearCart);
   const [currentStep, setCurrentStep] = useState<Step>(1);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [showRazorpay, setShowRazorpay] = useState(false);
-
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-
+  const [couponCode, setCouponCode] = useState("");
+  // const [appliedCoupon, setAppliedCoupon] = useState<{
+  //   code: string;
+  //   discount: number;
+  //   subtotal: number;
+  // } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [formData, setFormData] = useState({
     name: userDefaultData?.name || "",
     email: userDefaultData?.email || "",
     phone: userDefaultData?.phone || "",
-
     addressLine1: "",
     addressLine2: "",
     city: "",
     state: "",
     postalCode: "",
-
     paymentMethod: "PREPAID" as PaymentMethod,
   });
-
   const [errors, setErrors] = useState<Record<string, string>>({});
-
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
@@ -160,6 +172,58 @@ export default function CheckoutForm({
     }
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError("Enter a coupon code");
+
+      return;
+    }
+
+    try {
+      setIsApplyingCoupon(true);
+      setCouponError(null);
+
+      const result = await validateCouponAction(couponCode.trim(), items);
+
+      if (!result.success) {
+        setAppliedCoupon(null);
+
+        setCouponError(result.message || "Invalid coupon code");
+
+        return;
+      }
+
+      if (!("subtotal" in result) || typeof result.subtotal !== "number") {
+        setAppliedCoupon(null);
+        setCouponError("Unable to apply coupon");
+
+        return;
+      }
+
+      setAppliedCoupon({
+        code: couponCode.trim().toUpperCase(),
+        discount: result.discount,
+        subtotal: result.subtotal,
+      });
+
+      setCouponError(null);
+    } catch (error) {
+      console.error("Coupon apply failed:", error);
+
+      setAppliedCoupon(null);
+
+      setCouponError("Unable to apply coupon");
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError(null);
+  };
+
   /* -------------------------------------------------------------------------- */
   /* Final Checkout                                                             */
   /* -------------------------------------------------------------------------- */
@@ -199,7 +263,7 @@ export default function CheckoutForm({
         },
 
         items,
-        
+        couponCode: appliedCoupon?.code || undefined,
       });
 
       if (!result.success || !result.data) {
@@ -285,6 +349,7 @@ export default function CheckoutForm({
     },
 
     items,
+    couponCode: appliedCoupon?.code || undefined,
   };
 
   return (
@@ -611,6 +676,147 @@ export default function CheckoutForm({
                 {formData.addressLine1}, {formData.city}, {formData.state} -{" "}
                 {formData.postalCode}
               </p>
+            </div>
+
+            {/* ================================================================ */}
+            {/* COUPON CODE                                                      */}
+            {/* ================================================================ */}
+
+            <div className="mb-6 border border-white/10 bg-[#151516] p-4">
+              <div className="mb-4 flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center border border-[#f20a18]/30 bg-[#f20a18]/10">
+                  <Tag size={13} className="text-[#f20a18]" />
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-white">
+                    Coupon Code
+                  </p>
+
+                  <p className="mt-0.5 text-[10px] text-white/40">
+                    Have a discount code? Apply it here.
+                  </p>
+                </div>
+              </div>
+
+              {!appliedCoupon ? (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => {
+                        setCouponCode(e.target.value.toUpperCase());
+
+                        setCouponError(null);
+                      }}
+                      placeholder="ENTER COUPON CODE"
+                      className="
+            min-w-0
+            flex-1
+            border
+            border-white/10
+            bg-[#0d0d0e]
+            px-4
+            py-3
+            font-mono
+            text-xs
+            uppercase
+            tracking-wider
+            text-white
+            placeholder-white/20
+            outline-none
+            transition
+            focus:border-[#f20a18]
+          "
+                    />
+
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      disabled={isApplyingCoupon || !couponCode.trim()}
+                      className="
+            flex
+            min-w-[100px]
+            items-center
+            justify-center
+            bg-white
+            px-4
+            text-[10px]
+            font-bold
+            uppercase
+            tracking-[0.12em]
+            text-black
+            transition
+            hover:bg-[#f20a18]
+            hover:text-white
+            disabled:cursor-not-allowed
+            disabled:opacity-40
+          "
+                    >
+                      {isApplyingCoupon ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        "Apply"
+                      )}
+                    </button>
+                  </div>
+
+                  {couponError && (
+                    <p className="mt-2 text-[10px] text-red-400">
+                      {couponError}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div
+                  className="
+        flex
+        items-center
+        justify-between
+        border
+        border-emerald-500/30
+        bg-emerald-500/5
+        px-4
+        py-3
+      "
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center border border-emerald-500/30 bg-emerald-500/10">
+                      <Check size={14} className="text-emerald-400" />
+                    </div>
+
+                    <div>
+                      <p className="font-mono text-xs font-bold uppercase tracking-wider text-emerald-400">
+                        {appliedCoupon.code}
+                      </p>
+
+                      <p className="mt-0.5 text-[10px] text-white/40">
+                        Coupon applied successfully
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    className="
+          flex
+          h-8
+          w-8
+          items-center
+          justify-center
+          text-white/30
+          transition
+          hover:bg-white/5
+          hover:text-[#f20a18]
+        "
+                    aria-label="Remove coupon"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Payment Options */}

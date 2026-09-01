@@ -7,435 +7,244 @@ import {
   type CheckoutDto,
 } from "./checkout.dto";
 import razorpayService from "../payments/razorpay.service";
+import checkoutPricingService from "./checkout-pricing.service";
 
 
 export class CheckoutService {
-  async createOrder(
-    input: CheckoutDto
-  ) {
-    /*
-     * ----------------------------------
-     * 1. Validate input
-     * ----------------------------------
-     */
+async createOrder(
+  input: CheckoutDto
+) {
+  /*
+   * 1. Validate input
+   */
+  const validated =
+    checkoutDto.parse(input);
 
-    const validated =
-      checkoutDto.parse(input);
+  await connectToDB();
 
-    await connectToDB();
+  /*
+   * 2. Calculate everything server-side
+   *
+   * Products
+   * Stock
+   * Subtotal
+   * Coupon
+   * Discount
+   * Final total
+   */
+  const pricing =
+    await checkoutPricingService.calculate({
+      items: validated.items,
 
-    /*
-     * ----------------------------------
-     * 2. Resolve cart items
-     * ----------------------------------
-     */
+      couponCode:
+        validated.couponCode,
+    });
 
-    const items = [];
+  /*
+   * 3. Generate order number
+   */
+  const orderNumber =
+    `PS-${Date.now()}-${Math.floor(
+      1000 + Math.random() * 9000
+    )}`;
 
-    let subtotal = 0;
+  /*
+   * 4. Create MongoDB order
+   */
+  const order =
+    await Order.create({
+      orderNumber,
 
-    for (
-      const item of validated.items
-    ) {
-      const product =
-        await Product.findOne({
-          status: "active",
-          "variants.sku":
-            item.variantSku,
-        }).lean();
+      status: "pending",
 
-      if (!product) {
-        throw new Error(
-          `Product for variant "${item.variantSku}" was not found`
-        );
-      }
+      paymentStatus:
+        "pending",
 
-      const variant =
-        product.variants.find(
-          (variant: any) =>
-            variant.sku ===
-            item.variantSku
-        );
+      paymentMethod:
+        "razorpay",
 
-      if (!variant) {
-        throw new Error(
-          `Variant "${item.variantSku}" was not found`
-        );
-      }
+      customer:
+        validated.customer,
 
-      /*
-       * --------------------------------
-       * Stock validation
-       * --------------------------------
-       */
+      shippingAddress: {
+        ...validated.shippingAddress,
 
-      if (variant.stock <= 0) {
-        throw new Error(
-          `${product.name} is out of stock`
-        );
-      }
+        name:
+          validated.customer.name,
 
-      if (
-        variant.stock <
-        item.quantity
-      ) {
-        throw new Error(
-          `Only ${variant.stock} units of ${product.name} are available`
-        );
-      }
+        phone:
+          validated.customer.phone,
+      },
 
-      /*
-       * --------------------------------
-       * Calculate item total
-       * --------------------------------
-       */
+      items:
+        pricing.items,
 
-      const itemTotal =
-        variant.price *
-        item.quantity;
+      pricing: {
+        subtotal:
+          pricing.subtotal,
 
-      subtotal += itemTotal;
+        shipping:
+          pricing.shipping,
 
-      /*
-       * --------------------------------
-       * Get image
-       * --------------------------------
-       */
-
-      const image =
-        variant.images?.find(
-          (media: any) =>
-            media.type === "image"
-        ) ??
-        product.media?.find(
-          (media: any) =>
-            media.type === "image"
-        );
-
-      /*
-       * --------------------------------
-       * Add order item
-       * --------------------------------
-       */
-
-      items.push({
-        productId:
-          product._id,
-
-        variantSku:
-          variant.sku,
-
-        productName:
-          product.name,
-
-        variantAttributes:
-          variant.attributes ?? [],
-
-        image:
-          image?.url ?? "",
-
-        quantity:
-          item.quantity,
-
-        price:
-          variant.price,
+        discount:
+          pricing.discount,
 
         total:
-          itemTotal,
-      });
-    }
+          pricing.total,
+      },
 
+      coupon: pricing.coupon,
+
+      razorpay: {},
+    });
+
+  try {
     /*
-     * ----------------------------------
-     * 3. Calculate pricing
-     * ----------------------------------
+     * 5. Create Razorpay order
+     *
+     * IMPORTANT:
+     * pricing.total already includes
+     * the coupon discount.
      */
+    const razorpayOrder =
+      await razorpayService.createOrder({
+        amount:
+          pricing.total,
 
-    const shipping = 0;
-
-    const discount = 0;
-
-    const total =
-      subtotal +
-      shipping -
-      discount;
-
-    if (total <= 0) {
-      throw new Error(
-        "Invalid order amount"
-      );
-    }
-
-    /*
-     * ----------------------------------
-     * 4. Generate order number
-     * ----------------------------------
-     */
-
-    const orderNumber =
-      `PS-${Date.now()}-${Math.floor(
-        1000 + Math.random() * 9000
-      )}`;
-
-    /*
-     * ----------------------------------
-     * 5. Create MongoDB order
-     * ----------------------------------
-     */
-
-    const order =
-      await Order.create({
-        orderNumber,
-
-        status: "pending",
-
-        paymentStatus:
-          "pending",
-
-        paymentMethod:
-          "razorpay",
-
-        customer:
-          validated.customer,
-
-        shippingAddress: {
-          ...validated.shippingAddress,
-
-          name:
-            validated.customer.name,
-
-          phone:
-            validated.customer.phone,
-        },
-
-        items,
-
-        pricing: {
-          subtotal,
-
-          shipping,
-
-          discount,
-
-          total,
-        },
-
-        razorpay: {},
+        receipt:
+          orderNumber,
       });
 
-    try {
-      /*
-       * --------------------------------
-       * 6. Create Razorpay Order
-       * --------------------------------
-       */
+    /*
+     * 6. Store Razorpay order ID
+     */
+    order.razorpay = {
+      orderId:
+        razorpayOrder.id,
 
-      const razorpayOrder =
-        await razorpayService.createOrder(
-          {
-            amount: total,
+      paymentId: null,
 
-            receipt:
-              orderNumber,
-          }
-        );
+      signature: null,
+    };
 
-      /*
-       * --------------------------------
-       * 7. Store Razorpay Order ID
-       * --------------------------------
-       */
+    await order.save();
 
-      order.razorpay = {
+    return {
+      orderId:
+        order._id.toString(),
+
+      orderNumber,
+
+      razorpay: {
+        keyId:
+          process.env
+            .NEXT_PUBLIC_RAZORPAY_KEY_ID,
+
         orderId:
           razorpayOrder.id,
 
-        paymentId: null,
+        amount:
+          razorpayOrder.amount,
 
-        signature: null,
-      };
-
-      await order.save();
-
-      /*
-       * --------------------------------
-       * 8. Return checkout data
-       * --------------------------------
-       */
-
-      return {
-        orderId:
-          order._id.toString(),
-
-        orderNumber,
-
-        razorpay: {
-          keyId:
-            process.env
-              .NEXT_PUBLIC_RAZORPAY_KEY_ID,
-
-          orderId:
-            razorpayOrder.id,
-
-          amount:
-            razorpayOrder.amount,
-
-          currency:
-            razorpayOrder.currency,
-        },
-
-        pricing: {
-          subtotal,
-
-          shipping,
-
-          discount,
-
-          total,
-        },
-      };
-    } catch (error) {
-      /*
-       * Razorpay order creation failed.
-       *
-       * Don't leave our order as an
-       * active/pending checkout.
-       */
-
-      order.status =
-        "cancelled";
-
-      order.paymentStatus =
-        "failed";
-
-      await order.save();
-
-      throw error;
-    }
-  }
-  async createCodOrder(input: {
-    customer: {
-      name: string;
-      email?: string;
-      phone: string;
-    };
-
-    shippingAddress: {
-      addressLine1: string;
-      addressLine2?: string;
-      city: string;
-      state: string;
-      postalCode: string;
-      country: string;
-    };
-
-    items: {
-      variantSku: string;
-      quantity: number;
-    }[];
-  }) {
-    await connectToDB();
-
-    if (!input.items.length) {
-      throw new Error("Your cart is empty");
-    }
-
-    const orderItems = [];
-
-    let subtotal = 0;
-
-    for (const item of input.items) {
-      /*
-       * Find product containing
-       * this variant SKU.
-       */
-      const product =
-        await Product.findOne({
-          status: "active",
-          "variants.sku": item.variantSku,
-        });
-
-      if (!product) {
-        throw new Error(
-          `Product not found for SKU: ${item.variantSku}`
-        );
-      }
-
-      const variant =
-        product.variants.find(
-          (variant: any) =>
-            variant.sku === item.variantSku
-        );
-
-      if (!variant) {
-        throw new Error(
-          `Variant not found: ${item.variantSku}`
-        );
-      }
-
-      if (variant.stock < item.quantity) {
-        throw new Error(
-          `${product.name} does not have enough stock`
-        );
-      }
-
-      const total =
-        variant.price * item.quantity;
-
-      subtotal += total;
-
-      orderItems.push({
-        /*
-         * Match Order schema exactly
-         */
-        productId: product._id.toString(),
-
-        productName: product.name,
-
-        variantSku: variant.sku,
-
-        quantity: item.quantity,
-
-        price: variant.price,
-
-        total,
-
-        image:
-          variant.images?.[0]?.url ||
-          product.media?.[0]?.url ||
-          "",
-      });
-    }
-
-    const shipping = 0;
-
-    const total = subtotal + shipping;
-
-    const orderNumber =
-      `PS-${Date.now()
-        .toString()
-        .slice(-8)}`;
-
-    const order = await Order.create({
-      orderNumber,
-
-      /*
-       * Customer information
-       */
-      customer: {
-        name: input.customer.name,
-        email: input.customer.email,
-        phone: input.customer.phone,
+        currency:
+          razorpayOrder.currency,
       },
 
-      /*
-       * Your schema requires name
-       * and phone here too.
-       */
-      shippingAddress: {
-        name: input.customer.name,
+      pricing: {
+        subtotal:
+          pricing.subtotal,
 
-        phone: input.customer.phone,
+        shipping:
+          pricing.shipping,
+
+        discount:
+          pricing.discount,
+
+        total:
+          pricing.total,
+      },
+    };
+  } catch (error) {
+    order.status =
+      "cancelled";
+
+    order.paymentStatus =
+      "failed";
+
+    await order.save();
+
+    throw error;
+  }
+}
+async createCodOrder(input: {
+  customer: {
+    name: string;
+    email?: string;
+    phone: string;
+  };
+
+  shippingAddress: {
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+
+  items: {
+    variantSku: string;
+    quantity: number;
+  }[];
+
+  couponCode?: string;
+}) {
+  await connectToDB();
+
+  /*
+   * Resolve products and calculate
+   * all pricing server-side.
+   */
+  const pricing =
+    await checkoutPricingService.calculate({
+      items: input.items,
+
+      couponCode:
+        input.couponCode,
+    });
+
+  /*
+   * Generate order number
+   */
+  const orderNumber =
+    `PS-${Date.now()
+      .toString()
+      .slice(-8)}`;
+
+  /*
+   * Create COD order
+   */
+  const order =
+    await Order.create({
+      orderNumber,
+
+      customer: {
+        name:
+          input.customer.name,
+
+        email:
+          input.customer.email,
+
+        phone:
+          input.customer.phone,
+      },
+
+      shippingAddress: {
+        name:
+          input.customer.name,
+
+        phone:
+          input.customer.phone,
 
         addressLine1:
           input.shippingAddress.addressLine1,
@@ -456,35 +265,57 @@ export class CheckoutService {
           input.shippingAddress.country,
       },
 
-      items: orderItems,
+      items:
+        pricing.items,
 
-      /*
-       * Required nested pricing object
-       */
       pricing: {
-        subtotal,
-        shipping,
-        total,
+        subtotal:
+          pricing.subtotal,
+
+        shipping:
+          pricing.shipping,
+
+        discount:
+          pricing.discount,
+
+        total:
+          pricing.total,
       },
 
-      /*
-       * Match enum exactly
-       */
-      paymentMethod: "cod",
+      coupon: pricing.coupon,
 
-      paymentStatus: "pending",
+      paymentMethod:
+        "cod",
 
-      orderStatus: "pending",
+      paymentStatus:
+        "pending",
+
+      orderStatus:
+        "pending",
     });
 
-    return {
-      orderId:
-        order._id.toString(),
+  return {
+    orderId:
+      order._id.toString(),
 
-      orderNumber:
-        order.orderNumber,
-    };
-  }
+    orderNumber:
+      order.orderNumber,
+
+    pricing: {
+      subtotal:
+        pricing.subtotal,
+
+      shipping:
+        pricing.shipping,
+
+      discount:
+        pricing.discount,
+
+      total:
+        pricing.total,
+    },
+  };
+}
   async verifyPayment(input: {
     orderNumber: string;
     razorpayPaymentId: string;

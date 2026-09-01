@@ -129,6 +129,9 @@ export const checkoutDto =
         50,
         "Too many items"
       ),
+      couponCode: z
+      .string()
+      .trim()
   });
 
 

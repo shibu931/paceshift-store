@@ -59,6 +59,7 @@ export async function createCodOrderAction(
       variantSku: string;
       quantity: number;
     }[];
+    couponCode?: string;
   }
 ) {
   try {

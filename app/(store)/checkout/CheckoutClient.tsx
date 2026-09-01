@@ -5,12 +5,17 @@ import { ArrowLeft } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import CheckoutForm from "@/components/layout/checkout/CheckoutForm";
 import CheckoutSummary from "@/components/layout/checkout/CheckoutSummary";
+import { useState } from "react";
 
 export default function CheckoutClient() {
   const { cart, isLoading, error } = useCart({
     hydrateOnMount: true,
   });
-
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discount: number;
+    subtotal: number;
+  } | null>(null);
   if (isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -75,6 +80,8 @@ export default function CheckoutClient() {
               variantSku: item.variantSku,
               quantity: item.quantity,
             }))}
+            appliedCoupon={appliedCoupon}
+            setAppliedCoupon={setAppliedCoupon}
           />
         </section>
 
@@ -82,6 +89,7 @@ export default function CheckoutClient() {
         <CheckoutSummary
           items={cart.items}
           subtotal={cart.summary.subtotal}
+          appliedCoupon={appliedCoupon}
         />
       </div>
     </main>
