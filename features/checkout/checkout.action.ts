@@ -37,3 +37,52 @@ export async function createCheckoutAction(
     };
   }
 }
+
+export async function createCodOrderAction(
+  input: {
+    customer: {
+      name: string;
+      email?: string;
+      phone: string;
+    };
+
+    shippingAddress: {
+      addressLine1: string;
+      addressLine2?: string;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+    };
+
+    items: {
+      variantSku: string;
+      quantity: number;
+    }[];
+  }
+) {
+  try {
+    const order =
+      await checkoutService.createCodOrder(
+        input
+      );
+
+    return {
+      success: true,
+      data: order,
+    };
+  } catch (error) {
+    console.error(
+      "Create COD order failed:",
+      error
+    );
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to create COD order",
+    };
+  }
+}

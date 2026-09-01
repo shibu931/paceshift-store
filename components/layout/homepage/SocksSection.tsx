@@ -152,7 +152,7 @@ export default function SocksSection() {
             </span>
 
             <span className="bg-[#ec0116] px-3 py-1 font-display text-xs font-bold uppercase tracking-[0.06em] text-white">
-              50% OFF
+              22% OFF
             </span>
           </div>
 

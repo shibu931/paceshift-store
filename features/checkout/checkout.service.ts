@@ -52,7 +52,7 @@ export class CheckoutService {
 
       const variant =
         product.variants.find(
-          (variant:any) =>
+          (variant: any) =>
             variant.sku ===
             item.variantSku
         );
@@ -104,11 +104,11 @@ export class CheckoutService {
 
       const image =
         variant.images?.find(
-          (media:any) =>
+          (media: any) =>
             media.type === "image"
         ) ??
         product.media?.find(
-          (media:any) =>
+          (media: any) =>
             media.type === "image"
         );
 
@@ -313,158 +313,412 @@ export class CheckoutService {
       throw error;
     }
   }
-async verifyPayment(input: {
-  orderNumber: string;
-  razorpayPaymentId: string;
-  razorpayOrderId: string;
-  razorpaySignature: string;
-}) {
-  await connectToDB();
+  async createCodOrder(input: {
+    customer: {
+      name: string;
+      email?: string;
+      phone: string;
+    };
 
-  const order = await Order.findOne({
-    orderNumber: input.orderNumber,
-  });
+    shippingAddress: {
+      addressLine1: string;
+      addressLine2?: string;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+    };
 
-  if (!order) {
-    throw new Error("Order not found");
-  }
+    items: {
+      variantSku: string;
+      quantity: number;
+    }[];
+  }) {
+    await connectToDB();
 
-  /*
-   * Idempotency:
-   *
-   * If Razorpay/browser sends the
-   * verification request twice, don't
-   * deduct stock twice.
-   */
-  if (order.paymentStatus === "paid") {
+    if (!input.items.length) {
+      throw new Error("Your cart is empty");
+    }
+
+    const orderItems = [];
+
+    let subtotal = 0;
+
+    for (const item of input.items) {
+      /*
+       * Find product containing
+       * this variant SKU.
+       */
+      const product =
+        await Product.findOne({
+          status: "active",
+          "variants.sku": item.variantSku,
+        });
+
+      if (!product) {
+        throw new Error(
+          `Product not found for SKU: ${item.variantSku}`
+        );
+      }
+
+      const variant =
+        product.variants.find(
+          (variant: any) =>
+            variant.sku === item.variantSku
+        );
+
+      if (!variant) {
+        throw new Error(
+          `Variant not found: ${item.variantSku}`
+        );
+      }
+
+      if (variant.stock < item.quantity) {
+        throw new Error(
+          `${product.name} does not have enough stock`
+        );
+      }
+
+      const total =
+        variant.price * item.quantity;
+
+      subtotal += total;
+
+      orderItems.push({
+        /*
+         * Match Order schema exactly
+         */
+        productId: product._id.toString(),
+
+        productName: product.name,
+
+        variantSku: variant.sku,
+
+        quantity: item.quantity,
+
+        price: variant.price,
+
+        total,
+
+        image:
+          variant.images?.[0]?.url ||
+          product.media?.[0]?.url ||
+          "",
+      });
+    }
+
+    const shipping = 0;
+
+    const total = subtotal + shipping;
+
+    const orderNumber =
+      `PS-${Date.now()
+        .toString()
+        .slice(-8)}`;
+
+    const order = await Order.create({
+      orderNumber,
+
+      /*
+       * Customer information
+       */
+      customer: {
+        name: input.customer.name,
+        email: input.customer.email,
+        phone: input.customer.phone,
+      },
+
+      /*
+       * Your schema requires name
+       * and phone here too.
+       */
+      shippingAddress: {
+        name: input.customer.name,
+
+        phone: input.customer.phone,
+
+        addressLine1:
+          input.shippingAddress.addressLine1,
+
+        addressLine2:
+          input.shippingAddress.addressLine2 || "",
+
+        city:
+          input.shippingAddress.city,
+
+        state:
+          input.shippingAddress.state,
+
+        postalCode:
+          input.shippingAddress.postalCode,
+
+        country:
+          input.shippingAddress.country,
+      },
+
+      items: orderItems,
+
+      /*
+       * Required nested pricing object
+       */
+      pricing: {
+        subtotal,
+        shipping,
+        total,
+      },
+
+      /*
+       * Match enum exactly
+       */
+      paymentMethod: "cod",
+
+      paymentStatus: "pending",
+
+      orderStatus: "pending",
+    });
+
     return {
-      orderNumber: order.orderNumber,
-      status: order.status,
-      paymentStatus: order.paymentStatus,
+      orderId:
+        order._id.toString(),
+
+      orderNumber:
+        order.orderNumber,
     };
   }
+  async verifyPayment(input: {
+    orderNumber: string;
+    razorpayPaymentId: string;
+    razorpayOrderId: string;
+    razorpaySignature: string;
+  }) {
+    await connectToDB();
 
-  /*
-   * Get the Razorpay order ID from
-   * our database.
-   */
-  const razorpayOrderId =
-    order.razorpay?.orderId;
+    const order = await Order.findOne({
+      orderNumber: input.orderNumber,
+    });
 
-  if (!razorpayOrderId) {
-    throw new Error(
-      "Razorpay order not found"
-    );
-  }
+    if (!order) {
+      throw new Error("Order not found");
+    }
 
-  /*
-   * Never trust the Razorpay order ID
-   * coming from the browser.
-   */
-  if (
-    input.razorpayOrderId !==
-    razorpayOrderId
-  ) {
-    throw new Error(
-      "Invalid Razorpay order"
-    );
-  }
+    /*
+     * Idempotency:
+     *
+     * If Razorpay/browser sends the
+     * verification request twice, don't
+     * deduct stock twice.
+     */
+    if (order.paymentStatus === "paid") {
+      return {
+        orderNumber: order.orderNumber,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+      };
+    }
 
-  /*
-   * Verify Razorpay signature.
-   */
-  const secret =
-    process.env.RAZORPAY_KEY_SECRET;
+    /*
+     * Get the Razorpay order ID from
+     * our database.
+     */
+    const razorpayOrderId =
+      order.razorpay?.orderId;
 
-  if (!secret) {
-    throw new Error(
-      "RAZORPAY_KEY_SECRET is not configured"
-    );
-  }
+    if (!razorpayOrderId) {
+      throw new Error(
+        "Razorpay order not found"
+      );
+    }
 
-  const body =
-    `${razorpayOrderId}|${input.razorpayPaymentId}`;
+    /*
+     * Never trust the Razorpay order ID
+     * coming from the browser.
+     */
+    if (
+      input.razorpayOrderId !==
+      razorpayOrderId
+    ) {
+      throw new Error(
+        "Invalid Razorpay order"
+      );
+    }
 
-  const expectedSignature =
-    crypto
-      .createHmac(
-        "sha256",
-        secret
-      )
-      .update(body)
-      .digest("hex");
+    /*
+     * Verify Razorpay signature.
+     */
+    const secret =
+      process.env.RAZORPAY_KEY_SECRET;
 
-  const expectedBuffer =
-    Buffer.from(
-      expectedSignature,
-      "hex"
-    );
+    if (!secret) {
+      throw new Error(
+        "RAZORPAY_KEY_SECRET is not configured"
+      );
+    }
 
-  const receivedBuffer =
-    Buffer.from(
-      input.razorpaySignature,
-      "hex"
-    );
+    const body =
+      `${razorpayOrderId}|${input.razorpayPaymentId}`;
 
-  if (
-    expectedBuffer.length !==
-    receivedBuffer.length
-  ) {
-    throw new Error(
-      "Invalid payment signature"
-    );
-  }
+    const expectedSignature =
+      crypto
+        .createHmac(
+          "sha256",
+          secret
+        )
+        .update(body)
+        .digest("hex");
 
-  const signatureValid =
-    crypto.timingSafeEqual(
-      expectedBuffer,
-      receivedBuffer
-    );
+    const expectedBuffer =
+      Buffer.from(
+        expectedSignature,
+        "hex"
+      );
 
-  if (!signatureValid) {
-    order.paymentStatus =
-      "failed";
+    const receivedBuffer =
+      Buffer.from(
+        input.razorpaySignature,
+        "hex"
+      );
 
-    await order.save();
+    if (
+      expectedBuffer.length !==
+      receivedBuffer.length
+    ) {
+      throw new Error(
+        "Invalid payment signature"
+      );
+    }
 
-    throw new Error(
-      "Invalid payment signature"
-    );
-  }
+    const signatureValid =
+      crypto.timingSafeEqual(
+        expectedBuffer,
+        receivedBuffer
+      );
 
-  /*
-   * ----------------------------------
-   * Payment is verified.
-   * ----------------------------------
-   *
-   * Now deduct stock atomically.
-   */
-  const updatedItems: {
-    productId: string;
-    variantSku: string;
-    quantity: number;
-  }[] = [];
+    if (!signatureValid) {
+      order.paymentStatus =
+        "failed";
 
-  try {
-    for (const item of order.items) {
-      const result =
-        await Product.updateOne(
-          {
-            _id: item.productId,
+      await order.save();
 
-            variants: {
-              $elemMatch: {
-                sku: item.variantSku,
-                stock: {
-                  $gte: item.quantity,
+      throw new Error(
+        "Invalid payment signature"
+      );
+    }
+
+    /*
+     * ----------------------------------
+     * Payment is verified.
+     * ----------------------------------
+     *
+     * Now deduct stock atomically.
+     */
+    const updatedItems: {
+      productId: string;
+      variantSku: string;
+      quantity: number;
+    }[] = [];
+
+    try {
+      for (const item of order.items) {
+        const result =
+          await Product.updateOne(
+            {
+              _id: item.productId,
+
+              variants: {
+                $elemMatch: {
+                  sku: item.variantSku,
+                  stock: {
+                    $gte: item.quantity,
+                  },
                 },
               },
             },
+            {
+              $inc: {
+                "variants.$[variant].stock":
+                  -item.quantity,
+              },
+            },
+            {
+              arrayFilters: [
+                {
+                  "variant.sku":
+                    item.variantSku,
+                },
+              ],
+            }
+          );
+
+        /*
+         * No matching document means:
+         *
+         * - product doesn't exist
+         * - variant doesn't exist
+         * - insufficient stock
+         */
+        if (result.modifiedCount !== 1) {
+          throw new Error(
+            `${item.productName} is no longer available in the requested quantity`
+          );
+        }
+
+        updatedItems.push({
+          productId:
+            item.productId.toString(),
+
+          variantSku:
+            item.variantSku,
+
+          quantity:
+            item.quantity,
+        });
+      }
+
+      /*
+       * ----------------------------------
+       * Everything succeeded.
+       * ----------------------------------
+       */
+
+      order.paymentStatus =
+        "paid";
+
+      order.status =
+        "confirmed";
+
+      order.razorpay.paymentId =
+        input.razorpayPaymentId;
+
+      order.razorpay.signature =
+        input.razorpaySignature;
+
+      await order.save();
+
+      return {
+        orderNumber:
+          order.orderNumber,
+
+        status:
+          order.status,
+
+        paymentStatus:
+          order.paymentStatus,
+      };
+    } catch (error) {
+      /*
+       * Roll back any stock updates that
+       * happened before the failure.
+       */
+      for (const item of updatedItems) {
+        await Product.updateOne(
+          {
+            _id:
+              item.productId,
           },
           {
             $inc: {
               "variants.$[variant].stock":
-                -item.quantity,
+                item.quantity,
             },
           },
           {
@@ -476,93 +730,11 @@ async verifyPayment(input: {
             ],
           }
         );
-
-      /*
-       * No matching document means:
-       *
-       * - product doesn't exist
-       * - variant doesn't exist
-       * - insufficient stock
-       */
-      if (result.modifiedCount !== 1) {
-        throw new Error(
-          `${item.productName} is no longer available in the requested quantity`
-        );
       }
 
-      updatedItems.push({
-        productId:
-          item.productId.toString(),
-
-        variantSku:
-          item.variantSku,
-
-        quantity:
-          item.quantity,
-      });
+      throw error;
     }
-
-    /*
-     * ----------------------------------
-     * Everything succeeded.
-     * ----------------------------------
-     */
-
-    order.paymentStatus =
-      "paid";
-
-    order.status =
-      "confirmed";
-
-    order.razorpay.paymentId =
-      input.razorpayPaymentId;
-
-    order.razorpay.signature =
-      input.razorpaySignature;
-
-    await order.save();
-
-    return {
-      orderNumber:
-        order.orderNumber,
-
-      status:
-        order.status,
-
-      paymentStatus:
-        order.paymentStatus,
-    };
-  } catch (error) {
-    /*
-     * Roll back any stock updates that
-     * happened before the failure.
-     */
-    for (const item of updatedItems) {
-      await Product.updateOne(
-        {
-          _id:
-            item.productId,
-        },
-        {
-          $inc: {
-            "variants.$[variant].stock":
-              item.quantity,
-          },
-        },
-        {
-          arrayFilters: [
-            {
-              "variant.sku":
-                item.variantSku,
-            },
-          ],
-        }
-      );
-    }
-
-    throw error;
   }
-}
 }
 
 export const checkoutService =

@@ -71,6 +71,7 @@ export default function CheckoutClient() {
 
           <CheckoutForm
             items={cart.items.map((item) => ({
+              productId: item.productId,
               variantSku: item.variantSku,
               quantity: item.quantity,
             }))}
